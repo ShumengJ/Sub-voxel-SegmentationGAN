@@ -1,6 +1,6 @@
-DATAPATH = '/R496_3d_04-09-2025_test/'
-OUTPUTPATH = '/Tensorflow11/seg_dis_slow/output'
+DATAPATH = '/R496_3d/'
+OUTPUTPATH = '/Tensorflow/SRSegGAN/output'
 
-HOMEPATH = '/home/shumengj/scratch/Finch_Aug2024'
-FOLDERPATH = '/Tensorflow11/seg_dis_slow'
+HOMEPATH = '/home/shumengj/scratch/OstrichR496'
+FOLDERPATH = '/Tensorflow/SRSegGAN'
 ENV_HOMEPATH = '/home/shumengj/projects/def-natalier/shumengj'
