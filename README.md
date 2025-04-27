@@ -59,4 +59,5 @@ Monitor the training process by launching TensorBoard.
 ```
 tensorboard --logdir=$HOME/<YOURPATHtoPROJECT>/logs --host 0.0.0.0 --load_fast false &
 ```
+Losses and metrics are also printed to the terminal after each training epoch.
 
