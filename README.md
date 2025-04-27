@@ -46,7 +46,7 @@ The dataset directory is organized as follows:
 ```
 If you need to change any file paths, adjust the settings in ```global_path.py```, and if dataset organization differs, update ```load_data.py``` accordingly.
 
-## Train or validation
+## Train or Validate
 ```
 python $HOME/<YOURPATHtoPROJECT>/train.py
 ```
