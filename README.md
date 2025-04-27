@@ -44,9 +44,19 @@ The dataset directory is organized as follows:
       /segmentation_0423.tif
       ...
 ```
-If you need to change any file paths, adjust the settings in ```global_path.py```, and if your dataset’s organization differs, update ```load_data.py``` accordingly.
+If you need to change any file paths, adjust the settings in ```global_path.py```, and if dataset organization differs, update ```load_data.py``` accordingly.
 
+## Train or validation
+```
+python $HOME/<YOURPATHtoPROJECT>/train.py
+```
+```
+python $HOME/<YOURPATHtoPROJECT>/validation.py
+```
 
+## (Optional) Monitoring 
+Monitor the training process by launching TensorBoard. 
+```
+tensorboard --logdir=$HOME/<YOURPATHtoPROJECT>/logs --host 0.0.0.0 --load_fast false &
+```
 
-tensorboard --logdir=$HOME/scratch/OstrichR496/Tensorflow/SRSegGAN/logs --host 0.0.0.0 --load_fast false &
-python $HOME/scratch/OstrichR496/Tensorflow/SRSegGAN/train.py
