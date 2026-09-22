@@ -1,0 +1,15 @@
+{
+  "data_dir": "../OstrichR496/R496_3d",
+  "output_dir": "../OstrichR496/Tensorflow/SRSegGAN",
+  "checkpoint_dir": null,
+  "log_dir": null,
+  "prediction_dir": null,
+  "batch_size": 1,
+  "patch_size": 256,
+  "epochs": 300,
+  "input_channels": 1,
+  "output_channels": 3,
+  "lambda_mse": 10000.0,
+  "lambda_bce": 100.0,
+  "seed": 1
+}

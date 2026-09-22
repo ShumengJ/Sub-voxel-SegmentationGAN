@@ -1,6 +1,6 @@
-import tensorflow as tf
-from global_var import LAMBDA_MSE, LAMBDA_BCE
+"""Released edge-attentive residual objective and voxel-level metrics."""
 
+import tensorflow as tf
 
 loss_object = tf.keras.losses.BinaryCrossentropy(from_logits=True)
 
@@ -43,7 +43,14 @@ def get_class2_metrics(target, prediction):
     
     return TP, TN, FP, FN
 
-def generator_loss(disc_generated_output, gen_output, target, input_image):
+def generator_loss(
+    disc_generated_output,
+    gen_output,
+    target,
+    input_image,
+    lambda_mse=10000.0,
+    lambda_bce=100.0,
+):
     
     """
     Compute the total generator loss for a 3D GAN.
@@ -59,8 +66,17 @@ def generator_loss(disc_generated_output, gen_output, target, input_image):
     
     The loss comprises:
       - GAN loss (Binary Crossentropy against ones)
-      - A residual MSE loss computed between the input image modulated by the predictions and target.
+      - The paper's edge-attentive residual MSE, computed between the input
+        image modulated by the prediction and by the target.
       - A segmentation BCE loss.
+
+    The released edge-attentive term is implemented directly as::
+
+        mean(square(input_image * gen_output - input_image * target))
+
+    ``input_image`` has one channel and broadcasts over the three segmentation
+    channels. The implementation does not construct a separate gradient edge
+    map or an explicit per-class weight tensor.
     
     Returns:
       total_gen_loss, gan_loss, mse_loss, bce_loss, dice_per_class
@@ -69,8 +85,8 @@ def generator_loss(disc_generated_output, gen_output, target, input_image):
     # GAN loss: encourage discriminator to classify generated outputs as real.
     gan_loss = loss_object(tf.ones_like(disc_generated_output), disc_generated_output)
 
-    # Residual loss: MSE between residual representations.
-    # Element-wise multiply input_image with the output and ground truth.
+    # Edge-attentive residual loss from the paper/released implementation:
+    # compare the prediction and target after modulation by the input volume.
     residual_gen = input_image * gen_output
     residual_gt = input_image * target
     mse_loss = tf.reduce_mean(tf.square(residual_gen - residual_gt))
@@ -79,8 +95,8 @@ def generator_loss(disc_generated_output, gen_output, target, input_image):
     bce = tf.keras.losses.BinaryCrossentropy()
     bce_loss = bce(target, gen_output)
 
-    # Total generator loss with custom weighting (adjust weights as needed)
-    total_gen_loss = gan_loss + (LAMBDA_MSE * mse_loss) + (LAMBDA_BCE * bce_loss)
+    # Released weights: GAN + 10000 * edge-attentive residual + 100 * BCE.
+    total_gen_loss = gan_loss + (lambda_mse * mse_loss) + (lambda_bce * bce_loss)
 
     # Compute DICE coefficient per class.
     dice_per_class = dice_coefficient_per_class(target, gen_output)  

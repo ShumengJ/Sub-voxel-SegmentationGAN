@@ -1,0 +1,26 @@
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.coverage
+.venv/
+venv/
+
+# Local data and generated artifacts
+OstrichR496/
+data/
+datasets/
+runs/
+output/
+figures/
+logs/
+training_checkpoints/
+checkpoints/
+*.ckpt*
+*.tif
+*.tiff
+
+# Editors and operating systems
+.idea/
+.vscode/
+.DS_Store
