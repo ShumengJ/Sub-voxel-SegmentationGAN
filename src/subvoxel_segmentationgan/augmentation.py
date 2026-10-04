@@ -1,17 +1,13 @@
-import os
+"""Preprocessing and paired 3D augmentation."""
+
 import tensorflow as tf
-from load_data import load_tiff
-from global_var import PATCH_SIZE
 
-os.environ['TF_CPP_MIN_LOG_LEVEL'] = '1'
+from .io import load_tiff
 
-# Define constants
-ORIG_SIZE = PATCH_SIZE      # original volume size 
-PAD_SIZE = 15               # pad 15 voxels on each side so that padded dims: 256 + 2*15 = 286
-NEW_SIZE = ORIG_SIZE        # back to original size 
+PAD_SIZE = 15
 
 
-def random_jitter_3d(lr_vol, seg_vol):
+def random_jitter_3d(lr_vol, seg_vol, patch_size=256):
 
     """
     Apply random 3D spatial jittering and flips to a low-resolution volume and its segmentation.
@@ -42,6 +38,10 @@ def random_jitter_3d(lr_vol, seg_vol):
     - Each axis (depth, height, width) is flipped independently with 50% probability.
     """
 
+    # TIFF readers return NumPy arrays inside tf.py_function.
+    lr_vol = tf.convert_to_tensor(lr_vol, dtype=tf.float32)
+    seg_vol = tf.convert_to_tensor(seg_vol)
+
     # Ensure the volumes have rank 4. If they have rank 3, add a channel dimension.
     if lr_vol.shape.ndims == 3:
         lr_vol = tf.expand_dims(lr_vol, axis=-1)
@@ -56,20 +56,20 @@ def random_jitter_3d(lr_vol, seg_vol):
     seg_padded = tf.pad(seg_vol, paddings, mode='REFLECT')
     
     # Determine padded spatial dimension (should be 286).
-    padded_dim = ORIG_SIZE + 2 * PAD_SIZE 
+    padded_dim = patch_size + 2 * PAD_SIZE
     
     # Randomly select starting indices for depth, height, and width.
-    d_start = tf.random.uniform((), minval=0, maxval=padded_dim - NEW_SIZE + 1, dtype=tf.int32)
-    h_start = tf.random.uniform((), minval=0, maxval=padded_dim - NEW_SIZE + 1, dtype=tf.int32)
-    w_start = tf.random.uniform((), minval=0, maxval=padded_dim - NEW_SIZE + 1, dtype=tf.int32)
+    d_start = tf.random.uniform((), minval=0, maxval=padded_dim - patch_size + 1, dtype=tf.int32)
+    h_start = tf.random.uniform((), minval=0, maxval=padded_dim - patch_size + 1, dtype=tf.int32)
+    w_start = tf.random.uniform((), minval=0, maxval=padded_dim - patch_size + 1, dtype=tf.int32)
     
     # Crop the padded volumes back to the original size.
-    lr_crop = lr_padded[d_start:d_start+NEW_SIZE,
-                        h_start:h_start+NEW_SIZE,
-                        w_start:w_start+NEW_SIZE, :]
-    seg_crop = seg_padded[d_start:d_start+NEW_SIZE,
-                          h_start:h_start+NEW_SIZE,
-                          w_start:w_start+NEW_SIZE, :]
+    lr_crop = lr_padded[d_start:d_start+patch_size,
+                        h_start:h_start+patch_size,
+                        w_start:w_start+patch_size, :]
+    seg_crop = seg_padded[d_start:d_start+patch_size,
+                          h_start:h_start+patch_size,
+                          w_start:w_start+patch_size, :]
     
     # Random flipping along each spatial axis.
     if tf.random.uniform(()) > 0.5:
@@ -110,6 +110,7 @@ def normalize_3d(lr_vol):
     - The operation `(lr_vol / max_val) * 2 - 1` maps [0, max_val] → [-1, +1].
     """
 
+    lr_vol = tf.cast(tf.convert_to_tensor(lr_vol), tf.float32)
     max_val = tf.reduce_max(lr_vol)
 
     # Avoid division by zero if max_val happens to be 0
@@ -128,7 +129,7 @@ def random_jitter(lr_vol, seg_vol):
 
 
 
-def load_tiff_train(low_res_file, high_res_file, seg_file):
+def load_tiff_train(low_res_file, high_res_file, seg_file, patch_size=256, classes=3):
 
     """
     Load paired low- and high-resolution TIFF volumes and segmentation, apply augmentation,
@@ -164,7 +165,7 @@ def load_tiff_train(low_res_file, high_res_file, seg_file):
     lr, hr, seg = load_tiff(low_res_file, high_res_file, seg_file)
     
     # Apply random jitter augmentation to low-res and segmentation volumes.
-    lr_aug, seg_aug = random_jitter(lr, seg)
+    lr_aug, seg_aug = random_jitter_3d(lr, seg, patch_size)
     
     # Normalize the low-res volume.
     lr_aug = normalize_3d(lr_aug)
@@ -174,21 +175,21 @@ def load_tiff_train(low_res_file, high_res_file, seg_file):
     seg_int = tf.cast(tf.squeeze(seg_aug, axis=-1), tf.int32)
 
     # One-hot encode. (Subtract 1 so that label 1 becomes index 0, etc.)
-    seg_onehot = tf.one_hot(seg_int - 1, depth=3, axis=-1)
+    seg_onehot = tf.one_hot(seg_int - 1, depth=classes, axis=-1)
     
     return lr_aug, seg_onehot
 
 
 
 
-def load_tiff_val(low_res_file, high_res_file, seg_file):
+def load_tiff_val(low_res_file, high_res_file, seg_file, classes=3):
 
     lr, hr, seg = load_tiff(low_res_file, high_res_file, seg_file)
     lr_norm = normalize_3d(lr)
     
     # Ensure that lr_norm has a channel dimension.
     # If lr_norm is rank 3 ([256,256,256]), add a new axis at the end.
-    if tf.rank(lr_norm) == 3:
+    if lr_norm.ndim == 3:
         lr_norm = tf.expand_dims(lr_norm, axis=-1)
     
     # Process the segmentation volume.
@@ -197,6 +198,6 @@ def load_tiff_val(low_res_file, high_res_file, seg_file):
         tf.equal(tf.shape(seg)[-1], 1), lambda: tf.cast(tf.squeeze(seg, axis=-1), tf.int32), lambda: tf.cast(seg, tf.int32)
     )
     # Convert to one-hot encoding (maps labels {1,2,3} to one-hot channels).
-    seg_onehot = tf.one_hot(seg_int - 1, depth=3, axis=-1)
+    seg_onehot = tf.one_hot(seg_int - 1, depth=classes, axis=-1)
     
     return lr_norm, seg_onehot

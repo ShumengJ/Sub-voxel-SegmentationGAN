@@ -1,5 +1,6 @@
+"""Channels-first 3D conditional GAN models."""
+
 import tensorflow as tf
-from global_var import OUTPUT_CHANNELS, INPUT_CHANNELS
 
 
 
@@ -45,13 +46,15 @@ def upsample(filters, size, apply_dropout=False):
 # 3D Generator Model                       #
 ############################################
 
-def Generator():
+def Generator(input_channels=1, output_channels=3, patch_size=256):
     """
     3D Generator with skip connections. Expects an input volume of shape 
     [INPUT_CHANNELS, 256, 256, 256] and returns an output volume of shape 
     [OUTPUT_CHANNELS, 256, 256, 256] with a softmax applied across the channel axis.
     """
-    inputs = tf.keras.layers.Input(shape=[INPUT_CHANNELS, 256, 256, 256])
+    inputs = tf.keras.layers.Input(
+        shape=[input_channels, patch_size, patch_size, patch_size]
+    )
     
     # Build the downsampling stack; each downsample layer halves the spatial dimensions.
     down_stack = [
@@ -78,7 +81,7 @@ def Generator():
 
     initializer = tf.random_normal_initializer(0., 0.02)
     # Final layer to restore spatial dimensions to 256 in all three dimensions.
-    last = tf.keras.layers.Conv3DTranspose(OUTPUT_CHANNELS, kernel_size=4,
+    last = tf.keras.layers.Conv3DTranspose(output_channels, kernel_size=4,
                                              strides=2,
                                              padding='same',
                                              kernel_initializer=initializer,
@@ -112,7 +115,7 @@ def Generator():
 # 3D Discriminator Model                   #
 ############################################
 
-def Discriminator():
+def Discriminator(input_channels=1, output_channels=3, patch_size=256):
     """
     3D PatchGAN Discriminator. Expects two inputs:
       - input_image: shape [INPUT_CHANNELS, 256, 256, 256]
@@ -121,8 +124,9 @@ def Discriminator():
     """
     initializer = tf.random_normal_initializer(0., 0.02)
     
-    inp = tf.keras.layers.Input(shape=[INPUT_CHANNELS, 256, 256, 256], name='input_image')
-    tar = tf.keras.layers.Input(shape=[OUTPUT_CHANNELS, 256, 256, 256], name='target_image')
+    shape = [None, patch_size, patch_size, patch_size]
+    inp = tf.keras.layers.Input(shape=[input_channels, *shape[1:]], name='input_image')
+    tar = tf.keras.layers.Input(shape=[output_channels, *shape[1:]], name='target_image')
     
     # Concatenate along channels (axis=1)
     x = tf.keras.layers.Concatenate(axis=1)([inp, tar])    # shape: [batch, INPUT_CHANNELS+OUTPUT_CHANNELS, 256, 256, 256]
