@@ -92,11 +92,6 @@ independent axis flips, and normalization of low-resolution intensities to
 Set `--data-dir` to the `R496_3d` folder or to the folder that directly
 contains it. The program does not search additional nested folders.
 
-## Data and model availability
-
-Trained model weights and example avian eggshell datasets are available from
-the authors upon request.
-
 ## Configuration and paths
 
 All locations are relative or configurable; no user home or cluster path is
@@ -193,6 +188,11 @@ python scripts/evaluate.py --help
 
 These checks cover packaging, configuration, file pairing, metrics, and CLI
 parsing.
+
+## Data and model availability
+
+Trained model weights and example avian eggshell datasets are available from
+the authors upon request.
 
 ## Citation
 
